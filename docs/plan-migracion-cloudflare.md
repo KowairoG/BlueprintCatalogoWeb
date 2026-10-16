@@ -76,22 +76,32 @@ ANTES de tocar BD o imágenes.
 
 ---
 
-## Fase 1 — Proveedor R2 (lo nuevo de verdad; bajo riesgo, independiente)
+## Fase 1 — Proveedor R2 — ✅ CÓDIGO HECHO / PoC parcial (2026-10-15)
 
 **Objetivo:** agregar R2 como proveedor de almacenamiento **elegible**, sin quitar el local.
 
-- [ ] Nuevo `src/lib/storage/r2.ts` que implemente `StorageProvider` (`guardar`/`borrar`
-      + url pública) contra el binding `env.FOTOS`. Registrarlo en `PROVEEDORES` de
-      [`src/lib/storage/index.ts`](../src/lib/storage/index.ts) (al lado de `local`).
-- [ ] `STORAGE_PROVIDER="r2"` lo activa; `"local"` (default) sigue igual para demos.
-- [ ] Documentar las variables nuevas en [`.env.example`](../.env.example).
-- [ ] Ajustar cómo se arma/lee la URL guardada en `ProductoImagen.url` (hoy
-      `/uploads/<clave>`; con R2 público pasa a `https://fotos.<cliente>.cr/<clave>`).
-- [ ] Script de una pasada: subir fotos existentes a R2 + reescribir URLs (solo al
-      convertir una instancia ya desplegada).
+- [x] `src/lib/storage/r2.ts` implementa `StorageProvider` (`guardar`/`borrar`) contra el
+      binding `env.FOTOS` (resuelto por request con `getCloudflareContext()`), registrado
+      en `PROVEEDORES` de [`src/lib/storage/index.ts`](../src/lib/storage/index.ts).
+- [x] **URL sin cambios:** se mantiene `/uploads/<clave>` (no DNS por clon). En R2 las
+      imágenes se sirven con la ruta [`src/app/uploads/[...clave]/route.ts`](../src/app/uploads)
+      (lee de `env.FOTOS`, solo activa si `STORAGE_PROVIDER=r2`); en local siguen siendo
+      estáticos de `public/uploads`. Así `ProductoImagen.url` y `claveDesdeUrl()` no cambian.
+- [x] `STORAGE_PROVIDER="r2"` lo activa; `"local"` (default) sigue igual. Documentado en
+      [`.env.example`](../.env.example); binding `FOTOS` en [`wrangler.jsonc`](../wrangler.jsonc).
 
-**Hecho =** con `STORAGE_PROVIDER=r2` el catálogo sirve fotos desde R2 y el admin sube/borra;
-con `local` todo sigue como hoy.
+**Verificado:** build OK; en `wrangler dev` la ruta `/uploads/...` corre en workerd y **el
+binding `FOTOS` se resuelve** (404 correcto para clave inexistente, no 500 de binding
+ausente). **No round-tripeado localmente:** `wrangler r2 object put --local` (CLI) y
+`wrangler dev` (Miniflare) usan **stores R2 locales distintos**, un artefacto de
+herramientas, no del código.
+
+**Pendiente de fase:** round-trip real contra un bucket R2 **remoto** (`wrangler r2 bucket
+create`, necesita login) o vía el upload del admin; script de una pasada para subir fotos
+existentes + reescribir URLs al convertir una instancia ya desplegada.
+
+**Hecho (código) =** con `STORAGE_PROVIDER=r2` el catálogo resuelve el binding y sirve por
+`/uploads`; con `local` todo sigue como hoy.
 
 ---
 

@@ -1,4 +1,5 @@
 import { almacenamientoLocal } from "@/lib/storage/localDisk";
+import { almacenamientoR2 } from "@/lib/storage/r2";
 import type { StorageProvider } from "@/lib/storage/tipos";
 
 export type { ArchivoGuardado, StorageProvider } from "@/lib/storage/tipos";
@@ -18,6 +19,7 @@ export {
 
 const PROVEEDORES = {
   local: almacenamientoLocal,
+  r2: almacenamientoR2,
 } satisfies Record<string, StorageProvider>;
 
 type ClaveProveedor = keyof typeof PROVEEDORES;

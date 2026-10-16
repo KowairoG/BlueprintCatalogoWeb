@@ -9,7 +9,8 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "DB_PROVIDER": "d1"
+    "DB_PROVIDER": "d1",
+    "STORAGE_PROVIDER": "r2"
   },
   "d1_databases": [
     {
@@ -18,6 +19,12 @@
       // Placeholder para desarrollo local (Miniflare indexa por database_name).
       // En un clon real se reemplaza por el id de `wrangler d1 create`.
       "database_id": "local-dev-placeholder"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FOTOS",
+      "bucket_name": "blueprint-catalogo-fotos"
     }
   ]
 }
