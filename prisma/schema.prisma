@@ -7,9 +7,19 @@
 // que es la única fuente de verdad.
 // ---------------------------------------------------------------------------
 
+// Cliente para Node (sqlite-local): el que usa `next dev` y el VPS actual.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+}
+
+// Cliente para Cloudflare Workers (D1). El target `workerd` importa el query
+// compiler WASM como módulo precompilado (workerd prohíbe compilar WASM desde
+// bytes en runtime). Ver docs/plan-migracion-cloudflare.md (Fase 2) y prisma#28657.
+generator clientWorkerd {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma-workerd"
+  runtime  = "workerd"
 }
 
 datasource db {

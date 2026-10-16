@@ -95,20 +95,37 @@ con `local` todo sigue como hoy.
 
 ---
 
-## Fase 2 — Proveedor D1 (datos elegibles por env)
+## Fase 2 — Proveedor D1 (datos elegibles por env) — ✅ PoC LOGRADO (2026-10-15)
 
 **Objetivo:** que Prisma pueda hablar con D1 por binding, manteniendo SQLite-local.
+**Resultado:** el app renderiza en workerd leyendo de una D1 local (`/`, `/sedes`,
+`/login` → HTTP 200; una sede insertada en D1 aparece en `/sedes`).
 
-- [ ] Selección por env (ej. `DB_PROVIDER = sqlite-local | d1`) en
-      [`src/lib/db.ts`](../src/lib/db.ts): `sqlite-local` = `@prisma/adapter-better-sqlite3`
-      (actual); `d1` = **`@prisma/adapter-d1`** resolviendo el binding con
-      `getCloudflareContext()` (sin singleton global en Workers).
-- [ ] Aplicar el esquema a D1: SQL de `prisma/migrations` vía `wrangler d1 execute` /
-      `d1 migrations`.
-- [ ] **Clon nuevo:** correr el seed ([`prisma/seed.ts`](../prisma/seed.ts)) contra D1.
-      **Instancia existente:** exportar su `.db` → `wrangler d1 import` una vez, verificar conteos.
+- [x] **Selección por env `DB_PROVIDER = sqlite-local | d1`** en
+      [`src/lib/db.ts`](../src/lib/db.ts). `sqlite-local` (default) = `@prisma/adapter-better-sqlite3`;
+      `d1` = `@prisma/adapter-d1` con el binding resuelto por request vía
+      `getCloudflareContext()`. Para no tocar los 21+ sitios que importan `db`, el
+      cliente se crea **perezosamente** detrás de un `Proxy` (el binding solo existe
+      dentro del request, no al importar el módulo).
+- [x] Esquema aplicado a D1: `prisma/migrations/*/migration.sql` concatenado →
+      `wrangler d1 execute <db> --local --file=…` (SQL estándar, sin PRAGMA → apto para D1).
+- [x] Binding `DB` + `DB_PROVIDER=d1` en [`wrangler.jsonc`](../wrangler.jsonc).
 
-**Hecho =** con `DB_PROVIDER=d1` la app lee/escribe en D1; con `sqlite-local`, en el archivo (preview local).
+> **⚠️ Gotcha grande (resuelto) — Prisma 7 en workerd ([prisma#28657](https://github.com/prisma/prisma/issues/28657)).**
+> El cliente por defecto compila el **query compiler WASM en runtime**, y workerd lo
+> prohíbe (`Wasm code generation disallowed by embedder`). **Solución:** generar un
+> cliente con `runtime = "workerd"` (importa el WASM precompilado). Como ese cliente
+> NO corre en Node, el schema usa **dos generadores**: `client` (Node, para
+> `next dev`/VPS) y `clientWorkerd` (`../src/generated/prisma-workerd`, para D1).
+> `db.ts` importa el que corresponde al proveedor. Requiere `compatibility_date`
+> ≥ 2025-06-01 (usamos 2025-09-23). Versiones alineadas: `prisma`/`@prisma/client`/
+> `@prisma/adapter-d1` todas 7.9.1.
+
+**Pendiente de fase (no bloquea el PoC):** seed real contra D1 (clon nuevo) o
+`wrangler d1 import` del `.db` de una instancia existente; D1 real (no local) vía
+`wrangler d1 create` (necesita login de Cloudflare).
+
+**Hecho =** con `DB_PROVIDER=d1` la app lee/escribe en D1; con `sqlite-local`, en el archivo.
 
 ---
 

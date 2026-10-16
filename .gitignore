@@ -49,7 +49,7 @@ cloudflare-env.d.ts
 *.tsbuildinfo
 next-env.d.ts
 
-/src/generated/prisma
+/src/generated
 
 # Base de datos local de SQLite. Son datos del cliente, no código.
 *.db
