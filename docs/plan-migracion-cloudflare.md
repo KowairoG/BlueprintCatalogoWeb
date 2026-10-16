@@ -139,17 +139,25 @@ existentes + reescribir URLs al convertir una instancia ya desplegada.
 
 ---
 
-## Fase 3 — Next en Workers + secrets + deploy
+## Fase 3 — Next en Workers + secrets + deploy — ✅ DESPLEGADO (2026-10-16)
 
-- [ ] `wrangler.jsonc` con los bindings `DB` (D1) y `FOTOS` (R2).
-- [ ] Secrets por `wrangler secret put`: `SESSION_SECRET`, credenciales admin del seed, etc.
-      (Las guardas que **se niegan a arrancar** con los valores de ejemplo siguen aplicando.)
-- [ ] Resolver `bcryptjs`/CPU: Workers **Paid** o bajar cost factor; medir el login.
-- [ ] `ORIGENES_PERMITIDOS`: con dominio propio y sin túnel, Origin == Host → en principio
-      vacío; confirmar que las server actions (incluido el login) pasen.
-- [ ] `opennextjs-cloudflare deploy`.
+**En vivo:** https://blueprint-catalogo.pineapplev2-0.workers.dev (cuenta
+`pineapplev2.0@gmail.com`). Verificado: `/` 200, `/sedes` lee la **D1 remota**
+(`blueprintdb`, uuid 2ab6596a-…) y muestra la sede sembrada, `/uploads/...` sirve
+la foto del **bucket R2 `blueprint`** (round-trip real cerrado).
 
-**Hecho =** el catálogo corre en `*.workers.dev` con D1 + R2, login y admin OK.
+- [x] `wrangler.jsonc` con bindings `DB` (D1`blueprintdb`) y `FOTOS` (R2 `blueprint`).
+- [x] `opennextjs-cloudflare deploy` (⚠️ el **build debe correr en un entorno con
+      permiso de symlink**: en CMD/Windows normal falla con `EPERM symlink`; usar
+      WSL/Linux o un shell con Developer Mode/privilegio).
+- [ ] Secrets por `wrangler secret put`: `SESSION_SECRET`, credenciales admin del seed.
+      (Hoy toma vars de `.env` local; para prod hay que setear secrets reales.)
+- [ ] Resolver `bcryptjs`/CPU: medir el **login** en vivo; si cronometra fuera en Free,
+      Workers **Paid** ($5) o bajar el cost factor. **No probado aún** (falta seed de admin).
+- [ ] `ORIGENES_PERMITIDOS`: confirmar que las server actions (login) pasan en el dominio real.
+
+**Hecho =** el catálogo corre en `*.workers.dev` con D1 + R2 (público, lectura). Falta
+seed real + probar login/admin.
 
 ---
 

@@ -15,16 +15,14 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "blueprint-catalogo",
-      // Placeholder para desarrollo local (Miniflare indexa por database_name).
-      // En un clon real se reemplaza por el id de `wrangler d1 create`.
-      "database_id": "local-dev-placeholder"
+      "database_name": "blueprintdb",
+      "database_id": "2ab6596a-4d38-455e-979e-bb308814c174"
     }
   ],
   "r2_buckets": [
     {
       "binding": "FOTOS",
-      "bucket_name": "blueprint-catalogo-fotos"
+      "bucket_name": "blueprint"
     }
   ]
 }
