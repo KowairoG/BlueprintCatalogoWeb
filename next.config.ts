@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+// Da acceso a los bindings de Cloudflare (D1/R2) durante `next dev`. Inofensivo
+// para el build. PoC Fase 0 — ver docs/plan-migracion-cloudflare.md.
+initOpenNextCloudflareForDev();
 
 const enDesarrollo = process.env.NODE_ENV === "development";
 

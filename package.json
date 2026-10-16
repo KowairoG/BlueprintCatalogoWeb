@@ -13,15 +13,18 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "admin:password": "tsx scripts/cambiar-password-admin.ts",
-    "setup": "prisma migrate deploy && prisma generate && prisma db seed"
+    "setup": "prisma migrate deploy && prisma generate && prisma db seed",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && wrangler dev"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.12",
     "@prisma/adapter-better-sqlite3": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",
     "jose": "^6.2.8",
-    "next": "16.3.0",
+    "next": "^16.4.2",
     "prisma": "^7.9.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -39,6 +42,7 @@
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.151.0"
   }
 }
