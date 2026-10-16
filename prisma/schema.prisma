@@ -1,0 +1,237 @@
+// ---------------------------------------------------------------------------
+// Catálogo con existencias por sede — modelo de datos
+//
+// Nota sobre SQLite: no soporta enums. Los campos que conceptualmente son
+// enumeraciones (rol, etiqueta, origen) se guardan como String y se validan
+// en TypeScript con Zod. Los valores permitidos viven en src/lib/constantes.ts,
+// que es la única fuente de verdad.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  // La URL se configura en prisma.config.ts (convención de Prisma 7)
+}
+
+// ---------------------------------------------------------------------------
+// USUARIOS DEL PANEL
+// No hay registro público: el primer admin lo crea el seed y los demás los
+// crea un ADMIN desde /admin/usuarios.
+// ---------------------------------------------------------------------------
+
+model Usuario {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  nombre       String
+  passwordHash String
+  rol          String   @default("EDITOR") // ADMIN | EDITOR
+  activo       Boolean  @default(true)
+  creadoEn     DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+// ---------------------------------------------------------------------------
+// CATÁLOGO
+// ---------------------------------------------------------------------------
+
+/// Árbol de categorías. Las que tienen padreId = null son las "categorías
+/// madre" que salen en el mega menú; sus hijas son las subcategorías.
+model Categoria {
+  id          String  @id @default(cuid())
+  nombre      String
+  slug        String  @unique
+  icono       String? // emoji, igual que en el prototipo
+  descripcion String? // ej. "Todo lo que va adentro"
+  orden       Int     @default(0)
+
+  padreId String?
+  padre   Categoria?  @relation("ArbolCategorias", fields: [padreId], references: [id], onDelete: SetNull)
+  hijas   Categoria[] @relation("ArbolCategorias")
+
+  productos Producto[]
+
+  @@index([padreId])
+  @@index([orden])
+  @@map("categorias")
+}
+
+model Marca {
+  id      String  @id @default(cuid())
+  nombre  String  @unique
+  slug    String  @unique
+  logoUrl String?
+  orden   Int     @default(0)
+
+  productos Producto[]
+
+  @@map("marcas")
+}
+
+model Sede {
+  id           String  @id @default(cuid())
+  nombre       String
+  slug         String  @unique
+  direccion    String
+  telefono     String?
+  orden        Int     @default(0)
+  activa       Boolean @default(true)
+  /// Sedes anunciadas pero todavía sin abrir. Se muestran en el sitio con la
+  /// etiqueta "Próximamente" y no llevan stock.
+  proximamente Boolean @default(false)
+
+  existencias Existencia[]
+
+  @@index([orden])
+  @@map("sedes")
+}
+
+model Producto {
+  id          String  @id @default(cuid())
+  sku         String? @unique
+  nombre      String
+  slug        String  @unique
+  descripcion String
+  /// Emoji de respaldo cuando el producto todavía no tiene foto.
+  /// Es lo que usaba el prototipo y sirve para no mostrar tarjetas vacías.
+  emoji       String?
+
+  /// Precios en COLONES ENTEROS. Nunca decimales: el dinero no se guarda en float.
+  precio         Int
+  precioAnterior Int?
+
+  /// Visibilidad del precio en el sitio público, en tres estados:
+  ///   null  -> hereda Configuracion.mostrarPreciosPorDefecto
+  ///   true  -> siempre se muestra
+  ///   false -> siempre se oculta ("Consultar precio")
+  /// El precio se sigue guardando aunque esté oculto: es control interno.
+  mostrarPrecio Boolean?
+
+  etiqueta  String? // NUEVO | OFERTA | TOP
+  publicado Boolean @default(true)
+  destacado Boolean @default(false)
+
+  /// Nombre + marca + descripción + SKU, en minúsculas y sin tildes.
+  /// Existe porque SQLite no sabe comparar ignorando acentos: sin esta columna,
+  /// buscar "bateria" no encontraría "batería" — que es exactamente como la
+  /// gente escribe desde el celular. Se recalcula en cada guardado con
+  /// `textoDeBusqueda()` de src/features/productos/busqueda.ts
+  busqueda String @default("")
+
+  /// Código de este producto en un sistema externo (facturación / punto de
+  /// venta). Se deja desde V1 para que la futura sincronización de existencias
+  /// no obligue a una migración destructiva. Ver docs/integraciones.md
+  codigoExterno String?
+
+  categoriaId String
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+  marcaId     String?
+  marca       Marca?    @relation(fields: [marcaId], references: [id], onDelete: SetNull)
+
+  imagenes    ProductoImagen[]
+  existencias Existencia[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@index([categoriaId])
+  @@index([marcaId])
+  @@index([publicado])
+  @@index([codigoExterno])
+  @@index([busqueda])
+  @@map("productos")
+}
+
+model ProductoImagen {
+  id         String   @id @default(cuid())
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  url        String
+  alt        String?
+  orden      Int      @default(0)
+
+  @@index([productoId])
+  @@map("producto_imagenes")
+}
+
+/// Cuánto hay de un producto en una sede. Es el corazón del sistema: responde
+/// la pregunta que hoy la tienda contesta a mano por WhatsApp.
+///
+/// El estado visual (en stock / últimas unidades / agotado) NO se guarda: se
+/// deriva de `cantidad` y `umbralBajo` en src/lib/stock.ts, para que no existan
+/// dos verdades que puedan quedar desincronizadas.
+model Existencia {
+  id         String   @id @default(cuid())
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  sedeId     String
+  sede       Sede     @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+
+  cantidad   Int @default(0)
+  /// A partir de cuántas unidades se avisa "últimas unidades".
+  umbralBajo Int @default(2)
+
+  /// De dónde viene este dato: "local" (lo digita la tienda) o el nombre del
+  /// sistema externo que lo sincronizó. Ver docs/integraciones.md
+  origen           String    @default("local")
+  sincronizadoEn   DateTime?
+
+  actualizadoEn DateTime @updatedAt
+
+  @@unique([productoId, sedeId])
+  @@index([sedeId])
+  @@map("existencias")
+}
+
+// ---------------------------------------------------------------------------
+// CONFIGURACIÓN DEL NEGOCIO
+//
+// Una sola fila (id = "unica"). Es la identidad completa del negocio: nada de
+// esto debe estar escrito a mano en un componente.
+//
+// Los `@default` de acá son GENÉRICOS a propósito. El schema describe el
+// producto de software; los datos de un negocio concreto viven en
+// prisma/datos-iniciales.ts y entran por el seed. Esa separación es lo que
+// permite clonar el proyecto a otra tienda cambiando datos, no código.
+// ---------------------------------------------------------------------------
+
+model Configuracion {
+  id String @id @default("unica")
+
+  /// Nombre completo. Va en el pie y en los metadatos de SEO.
+  nombreNegocio String @default("Mi Negocio")
+  /// Palabra fuerte de la marca. Es la línea grande del logo.
+  nombreCorto   String @default("NEGOCIO")
+  /// Qué vende, en dos o tres palabras. Línea chica arriba del logo.
+  rubro         String @default("CATÁLOGO")
+  /// Logo en imagen. Cuando está vacío se usa `logoEmoji` como respaldo, así
+  /// el sitio nunca se ve roto por falta de un archivo.
+  logoUrl       String @default("")
+  /// Emoji del logo mientras no haya un archivo de imagen.
+  logoEmoji     String @default("🛒")
+  eslogan       String @default("")
+  /// Ciudad y país. Va en el pie y en el SEO.
+  ubicacion     String @default("")
+  /// Meta descripción para buscadores y para compartir por WhatsApp.
+  descripcionSeo String @default("")
+
+  telefono    String @default("")
+  whatsapp    String @default("") // formato internacional, sin +
+  horario     String @default("")
+  avisoBarra  String @default("")
+  facebookUrl String @default("")
+  tiktokUrl   String @default("")
+
+  /// Política por defecto de publicación de precios. Cada producto puede
+  /// hacer una excepción con Producto.mostrarPrecio.
+  mostrarPreciosPorDefecto Boolean @default(true)
+
+  actualizadoEn DateTime @updatedAt
+
+  @@map("configuracion")
+}

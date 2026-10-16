@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Paleta de colores del tema. Cambiar aquí para hacer reskin por cliente.
+
+   En Tailwind v4 el tema se declara en CSS: cada variable de @theme genera sus
+   utilidades (bg-primario, text-carbon, border-borde…).
+--------------------------------------------------------------------------- */
+
+@theme {
+  --color-naranja: #ff6b00;
+  --color-naranja-claro: #ff8c33;
+  --color-naranja-oscuro: #1a0d00;
+
+  --color-negro: #0d0d0f;
+  --color-carbon: #16161a;
+  --color-carbon-2: #1e1e24;
+  --color-borde: #2a2a32;
+  --color-borde-claro: #3a3a44;
+
+  --color-texto: #f2f2f4;
+  --color-tenue: #9a9aa6;
+
+  --color-verde: #22c55e;
+  --color-amarillo: #eab308;
+  --color-rojo: #ef4444;
+  --color-wa: #25d366;
+  --color-wa-oscuro: #04310f;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+}
+
+/* Gradientes decorativos con color "crudo" (no salen de un token). Se declaran
+   como variables para que el tema claro los pueda cambiar; en oscuro conservan
+   el look original. */
+:root {
+  --grad-hero: linear-gradient(135deg, #17171c 0%, #0f0f12 100%);
+  --grad-hondo: #121216;  /* esquina profunda de miniaturas de producto */
+  --grad-alto: #3a3a42;   /* esquina alta del degradado del logo */
+}
+
+/* ---------------------------------------------------------------------------
+   TEMA CLARO. El diseño base es oscuro; aquí sólo se redefinen los VALORES de
+   los tokens. Como los componentes usan utilidades de token (bg-carbon,
+   text-texto, border-borde…), cambiar el valor cascadea a todo el sitio sin
+   tocar componentes.
+
+   Se aplica cuando: (a) el sistema está en claro y el usuario no forzó oscuro,
+   o (b) el usuario fuerza claro con el botón (data-theme="light").
+   Contraste objetivo: WCAG AA (≥ 4.5:1 texto normal).
+
+   Ojo semántico: los nombres de token son "oscuros" (--color-negro es el FONDO,
+   --color-texto es el texto). En claro se invierten los valores, no los nombres.
+--------------------------------------------------------------------------- */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-naranja: #c2410c;         /* acento: naranja oscuro, legible como texto sobre claro */
+    --color-naranja-claro: #ea580c;   /* tinte del acento para hovers */
+    --color-naranja-oscuro: #fff7ed;  /* AHORA texto CLARO que va encima del acento (botones) */
+
+    --color-negro: #ffffff;           /* fondo base */
+    --color-carbon: #f6f6f8;          /* superficies / tarjetas */
+    --color-carbon-2: #ececef;        /* superficies elevadas / relleno de autocompletado */
+    --color-borde: #e4e4ea;
+    --color-borde-claro: #d3d3db;
+
+    --color-texto: #17181d;           /* texto principal */
+    --color-tenue: #5b5f6b;           /* texto atenuado (AA sobre claro) */
+
+    --color-verde: #15803d;           /* estados: versiones legibles sobre claro */
+    --color-amarillo: #a16207;
+    --color-rojo: #dc2626;
+    /* --color-wa / --color-wa-oscuro: verde de marca de WhatsApp, se mantienen */
+
+    --grad-hero: linear-gradient(135deg, #ffffff 0%, #eef0f4 100%);
+    --grad-hondo: #dfe1e6;
+    --grad-alto: #ffffff;
+  }
+}
+:root[data-theme="light"] {
+  --color-naranja: #c2410c;
+  --color-naranja-claro: #ea580c;
+  --color-naranja-oscuro: #fff7ed;
+
+  --color-negro: #ffffff;
+  --color-carbon: #f6f6f8;
+  --color-carbon-2: #ececef;
+  --color-borde: #e4e4ea;
+  --color-borde-claro: #d3d3db;
+
+  --color-texto: #17181d;
+  --color-tenue: #5b5f6b;
+
+  --color-verde: #15803d;
+  --color-amarillo: #a16207;
+  --color-rojo: #dc2626;
+
+  --grad-hero: linear-gradient(135deg, #ffffff 0%, #eef0f4 100%);
+  --grad-hondo: #dfe1e6;
+  --grad-alto: #ffffff;
+}
+
+html {
+  background: var(--color-negro);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) {
+    color-scheme: light;
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-negro);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visible y consistente en todo el sitio: sin esto la navegación con
+   teclado se vuelve adivinanza sobre un fondo oscuro. */
+:focus-visible {
+  outline: 2px solid var(--color-naranja);
+  outline-offset: 2px;
+}
+
+/* Que el autocompletado del navegador no pinte los campos de blanco. */
+input:-webkit-autofill,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-texto);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-carbon-2) inset;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

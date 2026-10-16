@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chubby en Cloudflare — D1, R2 y los dos caminos</title>
+<style>
+  :root{
+    --bg:#f7f6f3; --surface:#ffffff; --surface-2:#f0eee9; --border:#e2ddd4;
+    --ink:#23201b; --ink-soft:#5c564d; --ink-faint:#8a8377;
+    --accent:#c8622b; --accent-soft:#f3e2d6;
+    --good:#2f7d4f; --good-soft:#dff0e4;
+    --warn:#a8791b; --warn-soft:#f6ecd2;
+    --a-tint:#eef3ee; --b-tint:#eceef5;
+    --mono:"SFMono-Regular",Menlo,Consolas,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1a1815; --surface:#242019; --surface-2:#2c2822; --border:#3a352c;
+      --ink:#ede8df; --ink-soft:#b7b0a3; --ink-faint:#8a8377;
+      --accent:#e8894f; --accent-soft:#3a2a1e;
+      --good:#6fc48d; --good-soft:#20321f;
+      --warn:#e0b755; --warn-soft:#332a15;
+      --a-tint:#22291f; --b-tint:#1f2330;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1a1815; --surface:#242019; --surface-2:#2c2822; --border:#3a352c;
+    --ink:#ede8df; --ink-soft:#b7b0a3; --ink-faint:#8a8377;
+    --accent:#e8894f; --accent-soft:#3a2a1e;
+    --good:#6fc48d; --good-soft:#20321f;
+    --warn:#e0b755; --warn-soft:#332a15;
+    --a-tint:#22291f; --b-tint:#1f2330;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:56px 24px 96px}
+  header.doc{border-bottom:2px solid var(--border);padding-bottom:28px;margin-bottom:8px}
+  .kicker{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+  h1{font-size:33px;line-height:1.15;margin:.35em 0 .25em;letter-spacing:-.015em}
+  .sub{color:var(--ink-soft);font-size:16px;margin:0}
+  .meta{margin-top:16px;font-size:13px;color:var(--ink-faint)}
+  h2{font-size:24px;margin:56px 0 14px;letter-spacing:-.01em;padding-top:8px}
+  h3{font-size:18.5px;margin:30px 0 8px}
+  p{margin:0 0 16px}
+  a{color:var(--accent)}
+  strong{color:var(--ink)}
+  code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);
+    padding:.12em .4em;border-radius:5px;border:1px solid var(--border)}
+  .lead{font-size:18.5px;color:var(--ink-soft)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:22px 24px;margin:20px 0}
+  .card.a{border-left:4px solid var(--good);background:var(--a-tint)}
+  .card.b{border-left:4px solid #6b78c0;background:var(--b-tint)}
+  .tag{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;
+    letter-spacing:.03em;margin-bottom:6px}
+  .tag.a{background:var(--good-soft);color:var(--good)}
+  .tag.b{background:#dfe3f2;color:#4a56a6}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tag.b{background:#262b3d;color:#9aa6e0}}
+  :root[data-theme="dark"] .tag.b{background:#262b3d;color:#9aa6e0}
+  ul.clean{margin:6px 0 16px;padding-left:0;list-style:none}
+  ul.clean li{position:relative;padding-left:26px;margin:9px 0}
+  ul.clean li::before{content:"";position:absolute;left:6px;top:11px;width:7px;height:7px;
+    border-radius:2px;background:var(--accent)}
+  .pro::before{background:var(--good)!important}
+  .con::before{background:var(--warn)!important}
+  .steps{counter-reset:s;padding-left:0;list-style:none;margin:10px 0}
+  .steps li{position:relative;padding:2px 0 14px 44px;margin:0}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:0;
+    width:29px;height:29px;border-radius:8px;background:var(--accent);color:#fff;
+    font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .steps li:not(:last-child)::after{content:"";position:absolute;left:14px;top:32px;bottom:2px;
+    width:2px;background:var(--border)}
+  .tablewrap{overflow-x:auto;margin:18px 0;border:1px solid var(--border);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+  th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--border)}
+  thead th{background:var(--surface-2);font-size:12.5px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:var(--mono);font-size:13.5px;white-space:nowrap}
+  .total-row td{background:var(--surface-2);font-weight:700}
+  .callout{border-radius:12px;padding:16px 20px;margin:20px 0;font-size:15.5px;border:1px solid}
+  .callout .h{font-weight:700;margin-bottom:4px;display:block}
+  .callout.warn{background:var(--warn-soft);border-color:var(--warn)}
+  .callout.good{background:var(--good-soft);border-color:var(--good)}
+  .callout.accent{background:var(--accent-soft);border-color:var(--accent)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:13px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:6px;padding:2px 8px}
+  .big-price{font-size:29px;font-weight:800;color:var(--accent);letter-spacing:-.02em}
+  footer.doc{margin-top:64px;padding-top:22px;border-top:1px solid var(--border);
+    font-size:13.5px;color:var(--ink-faint)}
+  footer.doc a{color:var(--ink-faint);text-decoration:underline}
+  .scen{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin:4px 0 2px}
+  .scen .name{font-weight:700;font-size:17px}
+  .scen .traf{color:var(--ink-faint);font-size:14px}
+  hr.soft{border:none;border-top:1px solid var(--border);margin:28px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <div class="kicker">Moto Repuestos El Chubby · Infraestructura</div>
+  <h1>Llevar el catálogo a Cloudflare: los dos caminos y lo que costaría</h1>
+  <p class="sub">D1 para los datos, R2 para las fotos. Comparación honesta entre el despliegue “todo Cloudflare” y el conservador, con precios reales confirmados en la documentación oficial.</p>
+  <p class="meta">Preparado para el proyecto <code>idk_sell_a_software</code> · Datos verificados en developers.cloudflare.com el 26 de agosto de 2026 · Precios en USD.</p>
+</header>
+
+<p class="lead">Tu catálogo ya está construido sobre <strong>SQLite con Prisma</strong> (<code>chubby.db</code>), con las fotos guardadas como archivos y referenciadas por URL en <code>ProductoImagen</code>. Eso te deja en la mejor posición posible: <strong>D1 es SQLite por dentro</strong>, así que la base de datos casi no cambia, y las fotos tienen su hogar natural en R2. La pregunta real no es “¿D1 sí o no?” — es <strong>dónde va a correr tu Next.js</strong>. En eso se dividen los dos caminos.</p>
+
+<div class="callout accent">
+  <span class="h">La idea en una línea</span>
+  Datos estructurados (productos, categorías, existencias) → <strong>D1</strong>. Imágenes y archivos → <strong>R2</strong> (en la base solo guardas la URL). Lo único que cambia entre los dos caminos es si tu app corre <em>dentro</em> de Cloudflare Workers o sigue corriendo como servidor Node donde ya la tienes.
+</div>
+
+<h2>Camino A — Todo Cloudflare</h2>
+<div class="card a">
+  <span class="tag a">Recomendado a mediano plazo</span>
+  <p style="margin-bottom:6px"><strong>Next.js corriendo dentro de Workers (vía OpenNext) + D1 + R2.</strong> Es el despliegue “de verdad”: dominio propio, sin túnel, y aprovechando el free tier al máximo de forma sostenible.</p>
+</div>
+
+<h3>Cómo se hace, en orden</h3>
+<ol class="steps">
+  <li><strong>Adaptar Next para Workers con <code>@opennextjs/cloudflare</code>.</strong> Este adaptador toma el build de Next y lo transforma para que corra en Workers usando el runtime de Node. Soporta App Router, SSR e ISR — que es justo lo que usa Chubby.</li>
+  <li><strong>Crear la base D1</strong> y apuntar Prisma a ella con el <em>driver adapter</em> oficial de Prisma para D1. Tu <code>schema.prisma</code> se queda prácticamente igual (sigue siendo <code>provider = "sqlite"</code> en la práctica); cambia la forma de conectarse, no el modelo.</li>
+  <li><strong>Migrar el schema y los datos.</strong> Corrés tus migraciones contra D1 y cargás el seed (<code>datos-iniciales.ts</code>). Los datos de <code>chubby.db</code> se exportan e importan una sola vez.</li>
+  <li><strong>Crear el bucket R2</strong>, subir las 20 fotos de <code>fotos-chubby/</code>, y reescribir la columna <code>ProductoImagen.url</code> para que apunte a R2. Un script de una sola pasada.</li>
+  <li><strong>Configurar los <em>bindings</em></strong> (D1 y R2) en <code>wrangler</code> y desplegar. La app le habla a la base por binding, sin cadena de conexión ni contraseñas.</li>
+</ol>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px" >
+  <div>
+    <h3 style="margin-top:14px">A favor</h3>
+    <ul class="clean">
+      <li class="pro">Free tier al máximo y sostenible; te quitás el túnel <code>cloudflared</code>.</li>
+      <li class="pro">Migración de datos mínima: SQLite → SQLite.</li>
+      <li class="pro">Lecturas rápidas cerca del usuario; escala sola sin administrar servidor.</li>
+      <li class="pro">Una sola factura y un solo panel para todo.</li>
+    </ul>
+  </div>
+  <div>
+    <h3 style="margin-top:14px">El costo real</h3>
+    <ul class="clean">
+      <li class="con">El trabajo está en migrar el <em>runtime</em>, no la base: ajustar lo que asuma Node completo.</li>
+      <li class="con">Límite de tamaño del Worker: <strong>3 MiB comprimido en Free, 10 MiB en Paid</strong>. Una app Next puede acercarse — a veces empuja al plan de $5.</li>
+      <li class="con">Estás en Windows: OpenNext recomienda <strong>WSL/Linux</strong> para el build. No es opcional tenerlo cómodo.</li>
+      <li class="con">Node Middleware (Next 15.2+) todavía no está soportado.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Camino B — Conservador</h2>
+<div class="card b">
+  <span class="tag b">Para avanzar hoy sin reescribir el despliegue</span>
+  <p style="margin-bottom:6px"><strong>Seguís corriendo Next como lo tenés</strong> (servidor Node + túnel <code>cloudflared</code>, o un VPS barato), y solo movés lo que da beneficio inmediato con el menor riesgo.</p>
+</div>
+
+<h3>Cómo se hace</h3>
+<ol class="steps">
+  <li><strong>Mover solo las imágenes a R2.</strong> Subís las fotos al bucket y reescribís <code>ProductoImagen.url</code>. Tu app las sirve desde R2 sin cambiar nada más. Este paso ya te da CDN global y egress gratis — es la mejor relación beneficio/esfuerzo de todo el documento.</li>
+  <li><strong>La base de datos, dos opciones:</strong> dejarla como <code>chubby.db</code> local (cero cambios), <em>o</em> pasarla a D1 usando su <span class="pill">HTTP API</span> desde tu servidor Node. La HTTP API funciona desde cualquier lado, pero cada consulta es una llamada de red, así que es más lenta que un binding — sirve para bajo volumen.</li>
+  <li><strong>Todo lo demás queda igual:</strong> mismo deploy, mismo túnel, misma operación. Cuando quieras, migrás al Camino A sin haber perdido nada.</li>
+</ol>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+  <div>
+    <h3 style="margin-top:14px">A favor</h3>
+    <ul class="clean">
+      <li class="pro">Migración mínima; se hace en una tarde.</li>
+      <li class="pro">Ganás R2 (imágenes + egress gratis) sin tocar el runtime.</li>
+      <li class="pro">Cero riesgo sobre lo que ya funciona.</li>
+    </ul>
+  </div>
+  <div>
+    <h3 style="margin-top:14px">La contra</h3>
+    <ul class="clean">
+      <li class="con">Seguís dependiendo de un servidor/túnel encendido (algo que administrar).</li>
+      <li class="con">D1 por HTTP API es más lento que por binding.</li>
+      <li class="con">No es el despliegue “final”; es un paso intermedio.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout good">
+  <span class="h">Recomendación</span>
+  Empezá por el <strong>paso 1 del Camino B</strong> (fotos a R2) esta semana — beneficio inmediato, riesgo cero. Y dejá el <strong>Camino A completo</strong> para cuando tengas un rato con calma y WSL listo. Tu proyecto ya está diseñado para SQLite y hasta pensado para clonarse a otras tiendas, así que el destino natural es el todo-Cloudflare.
+</div>
+
+<h2>Qué te regala el free tier</h2>
+<p>Estos son los límites del plan gratuito, confirmados en la documentación oficial. Para un catálogo (lectura pura, datos pequeños) son enormes.</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Servicio</th><th>Recurso</th><th>Incluido gratis</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><strong>Workers</strong><br><span style="color:var(--ink-faint);font-size:13px">tu backend</span></td><td>Solicitudes</td><td class="num">100,000 / día</td></tr>
+    <tr><td>Tiempo de CPU</td><td class="num">10 ms por invocación</td></tr>
+    <tr><td rowspan="3"><strong>D1</strong><br><span style="color:var(--ink-faint);font-size:13px">base de datos</span></td><td>Almacenamiento</td><td class="num">5 GB total · 500 MB / base · hasta 10 bases</td></tr>
+    <tr><td>Filas leídas</td><td class="num">5,000,000 / día</td></tr>
+    <tr><td>Filas escritas</td><td class="num">100,000 / día</td></tr>
+    <tr><td rowspan="4"><strong>R2</strong><br><span style="color:var(--ink-faint);font-size:13px">fotos y archivos</span></td><td>Almacenamiento</td><td class="num">10 GB-mes</td></tr>
+    <tr><td>Operaciones Clase A (subir/escribir)</td><td class="num">1,000,000 / mes</td></tr>
+    <tr><td>Operaciones Clase B (leer/descargar)</td><td class="num">10,000,000 / mes</td></tr>
+    <tr><td>Egress (salida a internet)</td><td class="num">Gratis, siempre</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout accent">
+  <span class="h">Para dimensionar</span>
+  Tu catálogo entero pesa muchísimo menos de <strong>500 MB</strong>, y una página de catálogo lee decenas de filas. Con el free tier de D1 podrías servir del orden de <strong>60,000+ visitas de página al día</strong> antes de siquiera acercarte al tope de lecturas. El egress gratis de R2 es lo que te ahorra dinero de verdad frente a AWS S3.
+</div>
+
+<h2>Los respaldos ya vienen incluidos: Time Travel</h2>
+<p>D1 trae respaldo y recuperación punto-en-el-tiempo <strong>sin configurar nada</strong>. Se llama <strong>Time Travel</strong>: podés restaurar la base a <em>cualquier minuto</em> del pasado reciente. Está siempre activo, es automático y no cuesta nada extra.</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Plan</th><th>Historia que podés recuperar</th></tr></thead>
+  <tbody>
+    <tr><td>Workers Free</td><td class="num">últimos 7 días</td></tr>
+    <tr><td>Workers Paid ($5/mes)</td><td class="num">últimos 30 días</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout good">
+  <span class="h">Qué te resuelve (y qué no)</span>
+  Time Travel te deja "volver al estado del martes" ante un borrado mal hecho o una corrupción — eso solo ya es un respaldo de verdad, no una simple copia. <strong>El matiz:</strong> vive dentro de tu cuenta de Cloudflare, así que no te cubre un desastre a nivel cuenta (cierre, facturación, o borrar la base entera con <code>wrangler d1 delete</code>). Para eso, la propia Cloudflare recomienda además exportar la base con <code>wrangler d1 export</code> a un bucket R2 cada tanto. Dos capas: Time Travel para el "deshacer" diario, export a R2 para el seguro contra perder el proveedor.
+</div>
+
+<p style="font-size:14px;color:var(--ink-faint)">Fuente: <a href="https://developers.cloudflare.com/d1/reference/time-travel/">D1 — Time Travel and backups</a> (verificado el 26 ago 2026). La retención de 30 días aplica al plan Workers Paid; en el Free son 7 días.</p>
+
+<h2>Cuánto pagarías si te pasás del free tier</h2>
+<p>Estos son los precios de <em>excedente</em> (lo que cobran <strong>por encima</strong> de lo incluido), confirmados en la documentación oficial.</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Concepto</th><th>Incluido</th><th>Precio del excedente</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Workers Paid</strong> — base mensual</td><td class="num">—</td><td class="num">$5.00 / mes</td></tr>
+    <tr><td>Workers — solicitudes</td><td class="num">10 millones / mes</td><td class="num">$0.30 / millón</td></tr>
+    <tr><td>Workers — tiempo de CPU</td><td class="num">30 millones ms / mes</td><td class="num">$0.02 / millón de ms</td></tr>
+    <tr><td><strong>D1</strong> — filas leídas</td><td class="num">25,000 millones / mes</td><td class="num">$0.001 / millón</td></tr>
+    <tr><td>D1 — filas escritas</td><td class="num">50 millones / mes</td><td class="num">$1.00 / millón</td></tr>
+    <tr><td>D1 — almacenamiento</td><td class="num">5 GB</td><td class="num">$0.75 / GB-mes</td></tr>
+    <tr><td><strong>R2</strong> — almacenamiento</td><td class="num">10 GB-mes</td><td class="num">$0.015 / GB-mes</td></tr>
+    <tr><td>R2 — operaciones Clase A</td><td class="num">1 millón / mes</td><td class="num">$4.50 / millón</td></tr>
+    <tr><td>R2 — operaciones Clase B</td><td class="num">10 millones / mes</td><td class="num">$0.36 / millón</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout warn">
+  <span class="h">El dato clave para tu caso</span>
+  Para que <strong>D1 te cobre algo</strong> tendrías que superar <strong>25 mil millones de filas leídas al mes</strong>, o 50 millones de escrituras, o 5 GB de datos. Un catálogo no llega ni cerca. En la práctica <strong>tu base de datos va a costar $0</strong> por muchísimo tiempo. El gasto real, cuando llegue, viene de las solicitudes/CPU de Workers y de las descargas de imágenes en R2 — no de D1.
+</div>
+
+<h3>Escenarios concretos por tráfico</h3>
+<p style="font-size:15px;color:var(--ink-soft)">Supuestos por visita de página: ~2 solicitudes facturables a Workers, ~80 filas leídas en D1, ~2 operaciones Clase B en R2 (asumiendo que el CDN cachea la mayoría de las imágenes) y escrituras casi nulas. Son estimaciones para dar orden de magnitud; el número real depende del cacheo e ISR.</p>
+
+<div class="card">
+  <div class="scen"><span class="name">1 · Arranque / negocio local</span><span class="traf">≈ 100,000 visitas/mes · ~3,300/día</span></div>
+  <p style="margin:6px 0 0">Todo cae holgadamente dentro del free tier: Workers, D1 y R2 sin excedentes.</p>
+  <p style="margin:8px 0 0"><span class="big-price">$0</span> <span style="color:var(--ink-faint)">/ mes — plan gratuito</span></p>
+</div>
+
+<div class="card">
+  <div class="scen"><span class="name">2 · Va creciendo</span><span class="traf">≈ 1,000,000 visitas/mes · ~33,000/día</span></div>
+  <p style="margin:6px 0 0">Sigue por debajo de casi todos los límites, pero te acercás al tope diario de 100k solicitudes en días pico. Conviene pasar a Workers Paid por estabilidad.</p>
+  <p style="margin:8px 0 0"><span class="big-price">$0–$5</span> <span style="color:var(--ink-faint)">/ mes ($0 en free arriesgando el tope diario; $5 en Paid por tranquilidad)</span></p>
+</div>
+
+<div class="card">
+  <div class="scen"><span class="name">3 · Éxito fuerte</span><span class="traf">≈ 5,000,000 visitas/mes · ~165,000/día</span></div>
+  <p style="margin:6px 0 0">Ya superás los topes <em>diarios</em> del free tier (100k solicitudes y 5M lecturas), así que el plan Paid es obligatorio. Pero el volumen mensual sigue muy por debajo de lo incluido: D1 cobra $0 y R2 apenas roza su límite.</p>
+  <p style="margin:8px 0 0"><span class="big-price">≈ $5</span> <span style="color:var(--ink-faint)">/ mes — prácticamente solo la base de Workers Paid</span></p>
+</div>
+
+<div class="card">
+  <div class="scen"><span class="name">4 · Escala grande / viral</span><span class="traf">≈ 20,000,000 visitas/mes</span></div>
+  <p style="margin:6px 0 10px">Aquí sí aparecen excedentes de verdad. Desglose aproximado:</p>
+  <div class="tablewrap" style="margin:0">
+  <table>
+    <tbody>
+      <tr><td>Workers — base</td><td class="num">$5.00</td></tr>
+      <tr><td>Workers — solicitudes (40M; 30M de excedente)</td><td class="num">$9.00</td></tr>
+      <tr><td>Workers — CPU (~480M ms; 450M de excedente)</td><td class="num">$9.00</td></tr>
+      <tr><td>D1 — lecturas (1,600M ≪ 25,000M incluidos)</td><td class="num">$0.00</td></tr>
+      <tr><td>R2 — almacenamiento (20 GB; 10 de excedente)</td><td class="num">$0.15</td></tr>
+      <tr><td>R2 — Clase B (40M; 30M de excedente)</td><td class="num">$10.80</td></tr>
+      <tr class="total-row"><td>Total aproximado</td><td class="num">≈ $34 / mes</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="margin:12px 0 0;font-size:15px;color:var(--ink-soft)">Nota: aun a este nivel, <strong>D1 sigue costando $0</strong>. El gasto lo mandan Workers (tráfico) y R2 (descargas de imágenes).</p>
+</div>
+
+<div class="callout good">
+  <span class="h">Conclusión sobre el dinero</span>
+  Para el catálogo de Chubby, el free tier te alcanza hasta tener tráfico serio. Cuando lo despliegues “de verdad”, el costo realista es la <strong>base de $5/mes de Workers Paid</strong>, y solo un éxito grande te llevaría al rango de <strong>$15–$35/mes</strong>. Y sobre almacenar fotos: aunque guardaras <strong>miles</strong> de imágenes en alta, R2 cobra $0.015/GB-mes — 100 GB serían $1.50 al mes. El almacenamiento nunca va a ser tu problema.
+</div>
+
+<footer class="doc">
+  <p><strong>Fuentes</strong> (verificadas el 26 ago 2026):<br>
+  · <a href="https://developers.cloudflare.com/d1/platform/pricing/">D1 — Pricing</a> y <a href="https://developers.cloudflare.com/d1/platform/limits/">D1 — Limits</a><br>
+  · <a href="https://developers.cloudflare.com/r2/pricing/">R2 — Pricing</a><br>
+  · <a href="https://developers.cloudflare.com/workers/platform/pricing/">Workers — Pricing</a><br>
+  · <a href="https://opennext.js.org/cloudflare">OpenNext — Cloudflare adapter</a></p>
+  <p>Los escenarios de costo son estimaciones basadas en supuestos de tráfico declarados arriba; los precios de Cloudflare pueden cambiar. Confirmá siempre contra la calculadora y la documentación oficial antes de decidir. Moneda: USD.</p>
+</footer>
+
+</div>
+</body>
+</html>
