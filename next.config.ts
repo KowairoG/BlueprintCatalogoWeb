@@ -84,6 +84,13 @@ const nextConfig: NextConfig = {
     ? { experimental: { serverActions: { allowedOrigins: origenesPermitidos } } }
     : {}),
 
+  // Las fotos se sirven desde el proveedor de almacenamiento (disco local o R2
+  // vía la ruta /uploads), no por el optimizador /_next/image. En Cloudflare
+  // Workers ese optimizador exige Cloudflare Images habilitado en la cuenta;
+  // con `unoptimized` <Image> emite la URL directa, que ya funciona en ambos
+  // proveedores. (Trade-off: sin redimensionado automático.)
+  images: { unoptimized: true },
+
   // better-sqlite3 es un módulo nativo: no se puede empaquetar, tiene que
   // cargarse desde node_modules en tiempo de ejecución.
   // `bindings` va incluido porque es lo que better-sqlite3 usa para cargar el

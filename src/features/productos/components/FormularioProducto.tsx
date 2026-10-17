@@ -154,8 +154,7 @@ export function FormularioProducto({
               name="descripcion"
               defaultValue={v.descripcion}
               rows={3}
-              required
-              placeholder="Una o dos frases: lo que alguien necesita saber para decidir."
+              placeholder="Opcional: escribí lo que quieras sobre el producto."
               errores={estado.errores?.descripcion}
             />
 
