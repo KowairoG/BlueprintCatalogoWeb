@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+// Da acceso a los bindings de Cloudflare (D1/R2) durante `next dev`. Inofensivo
+// para el build. PoC Fase 0 — ver docs/plan-migracion-cloudflare.md.
+initOpenNextCloudflareForDev();
 
 const enDesarrollo = process.env.NODE_ENV === "development";
 
@@ -78,6 +83,13 @@ const nextConfig: NextConfig = {
   ...(origenesPermitidos.length > 0
     ? { experimental: { serverActions: { allowedOrigins: origenesPermitidos } } }
     : {}),
+
+  // Las fotos se sirven desde el proveedor de almacenamiento (disco local o R2
+  // vía la ruta /uploads), no por el optimizador /_next/image. En Cloudflare
+  // Workers ese optimizador exige Cloudflare Images habilitado en la cuenta;
+  // con `unoptimized` <Image> emite la URL directa, que ya funciona en ambos
+  // proveedores. (Trade-off: sin redimensionado automático.)
+  images: { unoptimized: true },
 
   // better-sqlite3 es un módulo nativo: no se puede empaquetar, tiene que
   // cargarse desde node_modules en tiempo de ejecución.

@@ -39,11 +39,17 @@ yarn-error.log*
 # vercel
 .vercel
 
+# cloudflare / opennext (PoC Fase 0)
+/.open-next/
+/.wrangler/
+.dev.vars
+cloudflare-env.d.ts
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-/src/generated/prisma
+/src/generated
 
 # Base de datos local de SQLite. Son datos del cliente, no código.
 *.db

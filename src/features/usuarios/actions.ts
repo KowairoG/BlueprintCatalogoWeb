@@ -40,7 +40,11 @@ export async function crearUsuario(
   _previo: EstadoAccion,
   formData: FormData
 ): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
+  // Para repoblar el formulario si el guardado falla. El password se blanquea:
+  // no se devuelve al cliente (el campo igual arranca vacío).
+  const enviados = { ...leer(formData), password: "" };
+
+  const resultado = await ejecutarAccion(async () => {
     await requireAdminEnAccion();
 
     const parseo = esquemaUsuarioNuevo.safeParse(leer(formData));
@@ -70,13 +74,20 @@ export async function crearUsuario(
     refrescar();
     return exito(`Cuenta creada para ${datos.email}.`);
   });
+
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }
 
 export async function actualizarUsuario(
   _previo: EstadoAccion,
   formData: FormData
 ): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
+  // Para repoblar el formulario si el guardado falla (password blanqueado).
+  const enviados = { ...leer(formData), password: "" };
+
+  const resultado = await ejecutarAccion(async () => {
     const sesion = await requireAdminEnAccion();
 
     const id = String(formData.get("id") ?? "");
@@ -132,6 +143,10 @@ export async function actualizarUsuario(
     refrescar();
     return exito("Usuario actualizado.");
   });
+
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }
 
 export async function eliminarUsuario(

@@ -80,7 +80,26 @@ export async function guardarConfiguracion(
   _previo: EstadoAccion,
   formData: FormData
 ): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
+  // Para repoblar el formulario si el guardado falla (React 19 resetea el form).
+  // El logo (archivo) no se repuebla: los <input type=file> no se pueden rellenar.
+  const enviados = {
+    nombreNegocio: String(formData.get("nombreNegocio") ?? ""),
+    nombreCorto: String(formData.get("nombreCorto") ?? ""),
+    rubro: String(formData.get("rubro") ?? ""),
+    logoEmoji: String(formData.get("logoEmoji") ?? ""),
+    eslogan: String(formData.get("eslogan") ?? ""),
+    ubicacion: String(formData.get("ubicacion") ?? ""),
+    descripcionSeo: String(formData.get("descripcionSeo") ?? ""),
+    telefono: String(formData.get("telefono") ?? ""),
+    whatsapp: String(formData.get("whatsapp") ?? ""),
+    horario: String(formData.get("horario") ?? ""),
+    avisoBarra: String(formData.get("avisoBarra") ?? ""),
+    facebookUrl: String(formData.get("facebookUrl") ?? ""),
+    tiktokUrl: String(formData.get("tiktokUrl") ?? ""),
+    mostrarPreciosPorDefecto: formData.get("mostrarPreciosPorDefecto") !== null,
+  };
+
+  const resultado = await ejecutarAccion(async () => {
     await requireUsuarioEnAccion();
 
     const parseo = esquema.safeParse({
@@ -123,4 +142,8 @@ export async function guardarConfiguracion(
 
     return exito("Configuración guardada.");
   });
+
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }

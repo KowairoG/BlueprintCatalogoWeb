@@ -30,8 +30,11 @@ export function FormularioCategoria({ madres, valores, padrePorDefecto }: Props)
     ESTADO_INICIAL
   );
 
+  // Si falló el guardado, `estado.valores` trae lo enviado (para repoblar).
+  const v = (estado.valores as typeof valores) ?? valores;
+
   return (
-    <form action={accion} className="flex flex-col gap-4">
+    <form key={estado.nonce ?? "inicial"} action={accion} className="flex flex-col gap-4">
       {valores && <input type="hidden" name="id" value={valores.id} />}
 
       <MensajeAccion estado={estado} />
@@ -40,7 +43,7 @@ export function FormularioCategoria({ madres, valores, padrePorDefecto }: Props)
         <CampoTexto
           etiqueta="Nombre"
           name="nombre"
-          defaultValue={valores?.nombre ?? ""}
+          defaultValue={v?.nombre ?? ""}
           placeholder="Frenos"
           required
           errores={estado.errores?.nombre}
@@ -48,7 +51,7 @@ export function FormularioCategoria({ madres, valores, padrePorDefecto }: Props)
         <CampoSelect
           etiqueta="Depende de"
           name="padreId"
-          defaultValue={valores?.padreId ?? padrePorDefecto ?? ""}
+          defaultValue={v?.padreId ?? padrePorDefecto ?? ""}
           errores={estado.errores?.padreId}
           ayuda="Sin madre = categoría principal del mega menú."
         >
@@ -67,7 +70,7 @@ export function FormularioCategoria({ madres, valores, padrePorDefecto }: Props)
         <CampoTexto
           etiqueta="Ícono"
           name="icono"
-          defaultValue={valores?.icono ?? ""}
+          defaultValue={v?.icono ?? ""}
           placeholder="🛑"
           maxLength={8}
           errores={estado.errores?.icono}
@@ -75,7 +78,7 @@ export function FormularioCategoria({ madres, valores, padrePorDefecto }: Props)
         <CampoTexto
           etiqueta="Frase corta"
           name="descripcion"
-          defaultValue={valores?.descripcion ?? ""}
+          defaultValue={v?.descripcion ?? ""}
           placeholder="Que frene cuando tiene que frenar"
           errores={estado.errores?.descripcion}
         />
@@ -83,7 +86,7 @@ export function FormularioCategoria({ madres, valores, padrePorDefecto }: Props)
           etiqueta="Orden"
           name="orden"
           inputMode="numeric"
-          defaultValue={String(valores?.orden ?? 0)}
+          defaultValue={String(v?.orden ?? 0)}
           errores={estado.errores?.orden}
         />
       </div>

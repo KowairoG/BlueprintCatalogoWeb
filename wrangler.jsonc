@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "blueprint-catalogo",
+  "compatibility_date": "2025-09-23",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "DB_PROVIDER": "d1",
+    "STORAGE_PROVIDER": "r2"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blueprintdb",
+      "database_id": "2ab6596a-4d38-455e-979e-bb308814c174"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FOTOS",
+      "bucket_name": "blueprint"
+    }
+  ]
+}

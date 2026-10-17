@@ -54,10 +54,11 @@ export const esquemaProducto = z
       .trim()
       .max(40, "El código es muy largo.")
       .transform((valor) => (valor === "" ? null : valor.toUpperCase())),
+    // Libre y opcional: el usuario escribe lo que quiera, sin exigir un largo
+    // mínimo ni empujarlo a "convencer".
     descripcion: z
       .string()
       .trim()
-      .min(10, "Escribí una descripción; es lo que convence al cliente.")
       .max(600, "La descripción es muy larga."),
     emoji: z
       .string()

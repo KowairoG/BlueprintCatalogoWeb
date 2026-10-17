@@ -40,12 +40,16 @@ export function FormularioConfiguracion({
     ESTADO_INICIAL
   );
 
+  // Si falló el guardado, `estado.valores` trae lo enviado (para repoblar).
+  // `logoUrl` no viene del form (es archivo), se mantiene el de `valores`.
+  const v = (estado.valores as ValoresConfiguracion | undefined) ?? valores;
+
   const [mostrarPrecios, setMostrarPrecios] = useState(
     valores.mostrarPreciosPorDefecto
   );
 
   return (
-    <form action={accion} className="flex flex-col gap-5">
+    <form key={estado.nonce ?? "inicial"} action={accion} className="flex flex-col gap-5">
       <MensajeAccion estado={estado} />
 
       <Tarjeta
@@ -88,7 +92,7 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Nombre completo"
               name="nombreNegocio"
-              defaultValue={valores.nombreNegocio}
+              defaultValue={v.nombreNegocio}
               required
               errores={estado.errores?.nombreNegocio}
               ayuda="Va en el pie de página y en los buscadores."
@@ -96,7 +100,7 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Eslogan"
               name="eslogan"
-              defaultValue={valores.eslogan}
+              defaultValue={v.eslogan}
               errores={estado.errores?.eslogan}
             />
           </div>
@@ -105,7 +109,7 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Logo · línea grande"
               name="nombreCorto"
-              defaultValue={valores.nombreCorto}
+              defaultValue={v.nombreCorto}
               required
               errores={estado.errores?.nombreCorto}
               ayuda="Ej. TIENDA"
@@ -113,14 +117,14 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Logo · línea chica"
               name="rubro"
-              defaultValue={valores.rubro}
+              defaultValue={v.rubro}
               errores={estado.errores?.rubro}
               ayuda="Ej. FERRETERÍA"
             />
             <CampoTexto
               etiqueta="Emoji de respaldo"
               name="logoEmoji"
-              defaultValue={valores.logoEmoji}
+              defaultValue={v.logoEmoji}
               maxLength={8}
               errores={estado.errores?.logoEmoji}
               ayuda="Se usa si no hay archivo de logo."
@@ -150,7 +154,7 @@ export function FormularioConfiguracion({
                 </span>
               ) : (
                 <span className="grid size-16 shrink-0 place-items-center rounded-xl border border-dashed border-borde text-2xl">
-                  {valores.logoEmoji}
+                  {v.logoEmoji}
                 </span>
               )}
 
@@ -176,14 +180,14 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Ubicación"
               name="ubicacion"
-              defaultValue={valores.ubicacion}
+              defaultValue={v.ubicacion}
               placeholder="Ciudad, provincia, país"
               errores={estado.errores?.ubicacion}
             />
             <CampoTexto
               etiqueta="Descripción para buscadores"
               name="descripcionSeo"
-              defaultValue={valores.descripcionSeo}
+              defaultValue={v.descripcionSeo}
               errores={estado.errores?.descripcionSeo}
               ayuda="Una o dos frases. Es lo que se lee bajo el título en Google."
             />
@@ -198,7 +202,7 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Teléfono"
               name="telefono"
-              defaultValue={valores.telefono}
+              defaultValue={v.telefono}
               placeholder="2222 3333"
               required
               errores={estado.errores?.telefono}
@@ -206,7 +210,7 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="WhatsApp"
               name="whatsapp"
-              defaultValue={valores.whatsapp}
+              defaultValue={v.whatsapp}
               placeholder="50622223333"
               required
               errores={estado.errores?.whatsapp}
@@ -215,7 +219,7 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Horario"
               name="horario"
-              defaultValue={valores.horario}
+              defaultValue={v.horario}
               errores={estado.errores?.horario}
             />
           </div>
@@ -223,7 +227,7 @@ export function FormularioConfiguracion({
           <CampoTexto
             etiqueta="Aviso de la barra superior"
             name="avisoBarra"
-            defaultValue={valores.avisoBarra}
+            defaultValue={v.avisoBarra}
             errores={estado.errores?.avisoBarra}
             ayuda="La franja naranja que cruza el sitio. Sirve para promos y avisos."
           />
@@ -232,13 +236,13 @@ export function FormularioConfiguracion({
             <CampoTexto
               etiqueta="Facebook"
               name="facebookUrl"
-              defaultValue={valores.facebookUrl}
+              defaultValue={v.facebookUrl}
               errores={estado.errores?.facebookUrl}
             />
             <CampoTexto
               etiqueta="TikTok"
               name="tiktokUrl"
-              defaultValue={valores.tiktokUrl}
+              defaultValue={v.tiktokUrl}
               errores={estado.errores?.tiktokUrl}
             />
           </div>

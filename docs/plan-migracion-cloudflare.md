@@ -76,53 +76,88 @@ ANTES de tocar BD o imágenes.
 
 ---
 
-## Fase 1 — Proveedor R2 (lo nuevo de verdad; bajo riesgo, independiente)
+## Fase 1 — Proveedor R2 — ✅ CÓDIGO HECHO / PoC parcial (2026-10-15)
 
 **Objetivo:** agregar R2 como proveedor de almacenamiento **elegible**, sin quitar el local.
 
-- [ ] Nuevo `src/lib/storage/r2.ts` que implemente `StorageProvider` (`guardar`/`borrar`
-      + url pública) contra el binding `env.FOTOS`. Registrarlo en `PROVEEDORES` de
-      [`src/lib/storage/index.ts`](../src/lib/storage/index.ts) (al lado de `local`).
-- [ ] `STORAGE_PROVIDER="r2"` lo activa; `"local"` (default) sigue igual para demos.
-- [ ] Documentar las variables nuevas en [`.env.example`](../.env.example).
-- [ ] Ajustar cómo se arma/lee la URL guardada en `ProductoImagen.url` (hoy
-      `/uploads/<clave>`; con R2 público pasa a `https://fotos.<cliente>.cr/<clave>`).
-- [ ] Script de una pasada: subir fotos existentes a R2 + reescribir URLs (solo al
-      convertir una instancia ya desplegada).
+- [x] `src/lib/storage/r2.ts` implementa `StorageProvider` (`guardar`/`borrar`) contra el
+      binding `env.FOTOS` (resuelto por request con `getCloudflareContext()`), registrado
+      en `PROVEEDORES` de [`src/lib/storage/index.ts`](../src/lib/storage/index.ts).
+- [x] **URL sin cambios:** se mantiene `/uploads/<clave>` (no DNS por clon). En R2 las
+      imágenes se sirven con la ruta [`src/app/uploads/[...clave]/route.ts`](../src/app/uploads)
+      (lee de `env.FOTOS`, solo activa si `STORAGE_PROVIDER=r2`); en local siguen siendo
+      estáticos de `public/uploads`. Así `ProductoImagen.url` y `claveDesdeUrl()` no cambian.
+- [x] `STORAGE_PROVIDER="r2"` lo activa; `"local"` (default) sigue igual. Documentado en
+      [`.env.example`](../.env.example); binding `FOTOS` en [`wrangler.jsonc`](../wrangler.jsonc).
 
-**Hecho =** con `STORAGE_PROVIDER=r2` el catálogo sirve fotos desde R2 y el admin sube/borra;
-con `local` todo sigue como hoy.
+**Verificado:** build OK; en `wrangler dev` la ruta `/uploads/...` corre en workerd y **el
+binding `FOTOS` se resuelve** (404 correcto para clave inexistente, no 500 de binding
+ausente). **No round-tripeado localmente:** `wrangler r2 object put --local` (CLI) y
+`wrangler dev` (Miniflare) usan **stores R2 locales distintos**, un artefacto de
+herramientas, no del código.
+
+**Pendiente de fase:** round-trip real contra un bucket R2 **remoto** (`wrangler r2 bucket
+create`, necesita login) o vía el upload del admin; script de una pasada para subir fotos
+existentes + reescribir URLs al convertir una instancia ya desplegada.
+
+**Hecho (código) =** con `STORAGE_PROVIDER=r2` el catálogo resuelve el binding y sirve por
+`/uploads`; con `local` todo sigue como hoy.
 
 ---
 
-## Fase 2 — Proveedor D1 (datos elegibles por env)
+## Fase 2 — Proveedor D1 (datos elegibles por env) — ✅ PoC LOGRADO (2026-10-15)
 
 **Objetivo:** que Prisma pueda hablar con D1 por binding, manteniendo SQLite-local.
+**Resultado:** el app renderiza en workerd leyendo de una D1 local (`/`, `/sedes`,
+`/login` → HTTP 200; una sede insertada en D1 aparece en `/sedes`).
 
-- [ ] Selección por env (ej. `DB_PROVIDER = sqlite-local | d1`) en
-      [`src/lib/db.ts`](../src/lib/db.ts): `sqlite-local` = `@prisma/adapter-better-sqlite3`
-      (actual); `d1` = **`@prisma/adapter-d1`** resolviendo el binding con
-      `getCloudflareContext()` (sin singleton global en Workers).
-- [ ] Aplicar el esquema a D1: SQL de `prisma/migrations` vía `wrangler d1 execute` /
-      `d1 migrations`.
-- [ ] **Clon nuevo:** correr el seed ([`prisma/seed.ts`](../prisma/seed.ts)) contra D1.
-      **Instancia existente:** exportar su `.db` → `wrangler d1 import` una vez, verificar conteos.
+- [x] **Selección por env `DB_PROVIDER = sqlite-local | d1`** en
+      [`src/lib/db.ts`](../src/lib/db.ts). `sqlite-local` (default) = `@prisma/adapter-better-sqlite3`;
+      `d1` = `@prisma/adapter-d1` con el binding resuelto por request vía
+      `getCloudflareContext()`. Para no tocar los 21+ sitios que importan `db`, el
+      cliente se crea **perezosamente** detrás de un `Proxy` (el binding solo existe
+      dentro del request, no al importar el módulo).
+- [x] Esquema aplicado a D1: `prisma/migrations/*/migration.sql` concatenado →
+      `wrangler d1 execute <db> --local --file=…` (SQL estándar, sin PRAGMA → apto para D1).
+- [x] Binding `DB` + `DB_PROVIDER=d1` en [`wrangler.jsonc`](../wrangler.jsonc).
 
-**Hecho =** con `DB_PROVIDER=d1` la app lee/escribe en D1; con `sqlite-local`, en el archivo (preview local).
+> **⚠️ Gotcha grande (resuelto) — Prisma 7 en workerd ([prisma#28657](https://github.com/prisma/prisma/issues/28657)).**
+> El cliente por defecto compila el **query compiler WASM en runtime**, y workerd lo
+> prohíbe (`Wasm code generation disallowed by embedder`). **Solución:** generar un
+> cliente con `runtime = "workerd"` (importa el WASM precompilado). Como ese cliente
+> NO corre en Node, el schema usa **dos generadores**: `client` (Node, para
+> `next dev`/VPS) y `clientWorkerd` (`../src/generated/prisma-workerd`, para D1).
+> `db.ts` importa el que corresponde al proveedor. Requiere `compatibility_date`
+> ≥ 2025-06-01 (usamos 2025-09-23). Versiones alineadas: `prisma`/`@prisma/client`/
+> `@prisma/adapter-d1` todas 7.9.1.
+
+**Pendiente de fase (no bloquea el PoC):** seed real contra D1 (clon nuevo) o
+`wrangler d1 import` del `.db` de una instancia existente; D1 real (no local) vía
+`wrangler d1 create` (necesita login de Cloudflare).
+
+**Hecho =** con `DB_PROVIDER=d1` la app lee/escribe en D1; con `sqlite-local`, en el archivo.
 
 ---
 
-## Fase 3 — Next en Workers + secrets + deploy
+## Fase 3 — Next en Workers + secrets + deploy — ✅ DESPLEGADO (2026-10-16)
 
-- [ ] `wrangler.jsonc` con los bindings `DB` (D1) y `FOTOS` (R2).
-- [ ] Secrets por `wrangler secret put`: `SESSION_SECRET`, credenciales admin del seed, etc.
-      (Las guardas que **se niegan a arrancar** con los valores de ejemplo siguen aplicando.)
-- [ ] Resolver `bcryptjs`/CPU: Workers **Paid** o bajar cost factor; medir el login.
-- [ ] `ORIGENES_PERMITIDOS`: con dominio propio y sin túnel, Origin == Host → en principio
-      vacío; confirmar que las server actions (incluido el login) pasen.
-- [ ] `opennextjs-cloudflare deploy`.
+**En vivo:** https://blueprint-catalogo.pineapplev2-0.workers.dev (cuenta
+`pineapplev2.0@gmail.com`). Verificado: `/` 200, `/sedes` lee la **D1 remota**
+(`blueprintdb`, uuid 2ab6596a-…) y muestra la sede sembrada, `/uploads/...` sirve
+la foto del **bucket R2 `blueprint`** (round-trip real cerrado).
 
-**Hecho =** el catálogo corre en `*.workers.dev` con D1 + R2, login y admin OK.
+- [x] `wrangler.jsonc` con bindings `DB` (D1`blueprintdb`) y `FOTOS` (R2 `blueprint`).
+- [x] `opennextjs-cloudflare deploy` (⚠️ el **build debe correr en un entorno con
+      permiso de symlink**: en CMD/Windows normal falla con `EPERM symlink`; usar
+      WSL/Linux o un shell con Developer Mode/privilegio).
+- [ ] Secrets por `wrangler secret put`: `SESSION_SECRET`, credenciales admin del seed.
+      (Hoy toma vars de `.env` local; para prod hay que setear secrets reales.)
+- [ ] Resolver `bcryptjs`/CPU: medir el **login** en vivo; si cronometra fuera en Free,
+      Workers **Paid** ($5) o bajar el cost factor. **No probado aún** (falta seed de admin).
+- [ ] `ORIGENES_PERMITIDOS`: confirmar que las server actions (login) pasan en el dominio real.
+
+**Hecho =** el catálogo corre en `*.workers.dev` con D1 + R2 (público, lectura). Falta
+seed real + probar login/admin.
 
 ---
 

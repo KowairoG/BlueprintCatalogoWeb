@@ -14,8 +14,11 @@ export function FormularioMarca({
 }) {
   const [estado, accion, pendiente] = useActionState(guardarMarca, ESTADO_INICIAL);
 
+  // Si falló el guardado, `estado.valores` trae lo enviado (para repoblar).
+  const v = (estado.valores as typeof valores) ?? valores;
+
   return (
-    <form action={accion} className="flex flex-col gap-3">
+    <form key={estado.nonce ?? "inicial"} action={accion} className="flex flex-col gap-3">
       {valores && <input type="hidden" name="id" value={valores.id} />}
 
       <MensajeAccion estado={estado} />
@@ -25,7 +28,7 @@ export function FormularioMarca({
           <CampoTexto
             etiqueta="Nombre"
             name="nombre"
-            defaultValue={valores?.nombre ?? ""}
+            defaultValue={v?.nombre ?? ""}
             placeholder="Nombre de la marca"
             required
             errores={estado.errores?.nombre}
@@ -36,7 +39,7 @@ export function FormularioMarca({
             etiqueta="Orden"
             name="orden"
             inputMode="numeric"
-            defaultValue={String(valores?.orden ?? 0)}
+            defaultValue={String(v?.orden ?? 0)}
             errores={estado.errores?.orden}
           />
         </div>

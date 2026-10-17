@@ -40,7 +40,16 @@ export async function guardarCategoria(
   _previo: EstadoAccion,
   formData: FormData
 ): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
+  // Para repoblar el formulario si el guardado falla (React 19 resetea el form).
+  const enviados = {
+    nombre: String(formData.get("nombre") ?? ""),
+    icono: String(formData.get("icono") ?? ""),
+    descripcion: String(formData.get("descripcion") ?? ""),
+    padreId: String(formData.get("padreId") ?? ""),
+    orden: String(formData.get("orden") ?? ""),
+  };
+
+  const resultado = await ejecutarAccion(async () => {
     await requireUsuarioEnAccion();
 
     const id = String(formData.get("id") ?? "");
@@ -91,6 +100,10 @@ export async function guardarCategoria(
     refrescar();
     return exito("Categoría creada.");
   });
+
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }
 
 export async function eliminarCategoria(formData: FormData): Promise<void> {

@@ -4,6 +4,7 @@ import { EncabezadoPanel, Insignia, Tarjeta } from "@/components/ui/Panel";
 import { db } from "@/lib/db";
 import { requireUsuario } from "@/lib/guards";
 import { eliminarCategoria } from "@/features/categorias/actions";
+import { FormEliminar } from "@/components/ui/FormEliminar";
 import { FormularioCategoria } from "@/features/categorias/components/FormularioCategoria";
 
 export const metadata: Metadata = { title: "Categorías" };
@@ -76,8 +77,11 @@ export default async function PaginaCategorias() {
                         ({hija._count.productos})
                       </span>
                       {hija._count.productos === 0 && (
-                        <form action={eliminarCategoria}>
-                          <input type="hidden" name="id" value={hija.id} />
+                        <FormEliminar
+                          accion={eliminarCategoria}
+                          id={hija.id}
+                          mensaje={`¿Eliminar la subcategoría "${hija.nombre}"?`}
+                        >
                           <button
                             type="submit"
                             aria-label={`Eliminar ${hija.nombre}`}
@@ -85,7 +89,7 @@ export default async function PaginaCategorias() {
                           >
                             ✕
                           </button>
-                        </form>
+                        </FormEliminar>
                       )}
                     </li>
                   ))}
@@ -112,12 +116,16 @@ export default async function PaginaCategorias() {
 
                   {categoria._count.productos === 0 &&
                     categoria.hijas.length === 0 && (
-                      <form action={eliminarCategoria} className="mt-4">
-                        <input type="hidden" name="id" value={categoria.id} />
+                      <FormEliminar
+                        accion={eliminarCategoria}
+                        id={categoria.id}
+                        mensaje={`¿Eliminar la categoría "${categoria.nombre}"?`}
+                        className="mt-4"
+                      >
                         <Boton type="submit" variante="peligro" tamano="sm">
                           Eliminar categoría
                         </Boton>
-                      </form>
+                      </FormEliminar>
                     )}
                 </div>
               </details>
