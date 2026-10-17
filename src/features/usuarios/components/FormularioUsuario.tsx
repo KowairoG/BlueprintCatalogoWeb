@@ -26,8 +26,11 @@ export function FormularioUsuario({ valores }: { valores?: ValoresUsuario }) {
     ESTADO_INICIAL
   );
 
+  // Si falló el guardado, `estado.valores` trae lo enviado (sin password).
+  const v = (estado.valores as ValoresUsuario | undefined) ?? valores;
+
   return (
-    <form action={accion} className="flex flex-col gap-4">
+    <form key={estado.nonce ?? "inicial"} action={accion} className="flex flex-col gap-4">
       {valores && <input type="hidden" name="id" value={valores.id} />}
 
       <MensajeAccion estado={estado} />
@@ -36,7 +39,7 @@ export function FormularioUsuario({ valores }: { valores?: ValoresUsuario }) {
         <CampoTexto
           etiqueta="Nombre"
           name="nombre"
-          defaultValue={valores?.nombre ?? ""}
+          defaultValue={v?.nombre ?? ""}
           required
           errores={estado.errores?.nombre}
         />
@@ -45,7 +48,7 @@ export function FormularioUsuario({ valores }: { valores?: ValoresUsuario }) {
           name="email"
           type="email"
           autoComplete="off"
-          defaultValue={valores?.email ?? ""}
+          defaultValue={v?.email ?? ""}
           required
           errores={estado.errores?.email}
         />
@@ -68,7 +71,7 @@ export function FormularioUsuario({ valores }: { valores?: ValoresUsuario }) {
         <CampoSelect
           etiqueta="Rol"
           name="rol"
-          defaultValue={valores?.rol ?? "EDITOR"}
+          defaultValue={v?.rol ?? "EDITOR"}
           errores={estado.errores?.rol}
           ayuda={DESCRIPCION_ROL.EDITOR}
         >
@@ -83,7 +86,7 @@ export function FormularioUsuario({ valores }: { valores?: ValoresUsuario }) {
       <CampoCasilla
         etiqueta="Cuenta activa"
         name="activo"
-        defaultChecked={valores?.activo ?? true}
+        defaultChecked={v?.activo ?? true}
         ayuda="Al desactivarla, la persona pierde el acceso de inmediato aunque tenga la sesión abierta."
       />
 

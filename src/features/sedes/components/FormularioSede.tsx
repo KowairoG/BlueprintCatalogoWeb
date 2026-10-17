@@ -20,8 +20,11 @@ export type ValoresSede = {
 export function FormularioSede({ valores }: { valores?: ValoresSede }) {
   const [estado, accion, pendiente] = useActionState(guardarSede, ESTADO_INICIAL);
 
+  // Si falló el guardado, `estado.valores` trae lo enviado (para repoblar).
+  const v = (estado.valores as ValoresSede | undefined) ?? valores;
+
   return (
-    <form action={accion} className="flex flex-col gap-4">
+    <form key={estado.nonce ?? "inicial"} action={accion} className="flex flex-col gap-4">
       {valores && <input type="hidden" name="id" value={valores.id} />}
 
       <MensajeAccion estado={estado} />
@@ -30,7 +33,7 @@ export function FormularioSede({ valores }: { valores?: ValoresSede }) {
         <CampoTexto
           etiqueta="Nombre"
           name="nombre"
-          defaultValue={valores?.nombre ?? ""}
+          defaultValue={v?.nombre ?? ""}
           placeholder="Centro"
           required
           errores={estado.errores?.nombre}
@@ -38,7 +41,7 @@ export function FormularioSede({ valores }: { valores?: ValoresSede }) {
         <CampoTexto
           etiqueta="Teléfono"
           name="telefono"
-          defaultValue={valores?.telefono ?? ""}
+          defaultValue={v?.telefono ?? ""}
           placeholder="6454 6710"
           errores={estado.errores?.telefono}
         />
@@ -47,7 +50,7 @@ export function FormularioSede({ valores }: { valores?: ValoresSede }) {
       <CampoTexto
         etiqueta="Dirección"
         name="direccion"
-        defaultValue={valores?.direccion ?? ""}
+        defaultValue={v?.direccion ?? ""}
         placeholder="Dirección exacta: la que le dirías a alguien que va llegando"
         required
         errores={estado.errores?.direccion}
@@ -59,20 +62,20 @@ export function FormularioSede({ valores }: { valores?: ValoresSede }) {
           etiqueta="Orden"
           name="orden"
           inputMode="numeric"
-          defaultValue={String(valores?.orden ?? 0)}
+          defaultValue={String(v?.orden ?? 0)}
           errores={estado.errores?.orden}
         />
         <div className="flex flex-col justify-center gap-2">
           <CampoCasilla
             etiqueta="Activa"
             name="activa"
-            defaultChecked={valores?.activa ?? true}
+            defaultChecked={v?.activa ?? true}
             ayuda="Si la apagás, deja de aparecer en el sitio."
           />
           <CampoCasilla
             etiqueta="Próximamente"
             name="proximamente"
-            defaultChecked={valores?.proximamente ?? false}
+            defaultChecked={v?.proximamente ?? false}
             ayuda="Se anuncia en el sitio pero no lleva existencias todavía."
           />
         </div>

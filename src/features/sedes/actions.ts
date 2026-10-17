@@ -48,7 +48,17 @@ export async function guardarSede(
   _previo: EstadoAccion,
   formData: FormData
 ): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
+  // Para repoblar el formulario si el guardado falla (React 19 resetea el form).
+  const enviados = {
+    nombre: String(formData.get("nombre") ?? ""),
+    direccion: String(formData.get("direccion") ?? ""),
+    telefono: String(formData.get("telefono") ?? ""),
+    orden: String(formData.get("orden") ?? ""),
+    activa: formData.get("activa") !== null,
+    proximamente: formData.get("proximamente") !== null,
+  };
+
+  const resultado = await ejecutarAccion(async () => {
     await requireUsuarioEnAccion();
 
     const id = String(formData.get("id") ?? "");
@@ -82,6 +92,10 @@ export async function guardarSede(
     refrescar();
     return exito("Sede creada.");
   });
+
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }
 
 export async function eliminarSede(
