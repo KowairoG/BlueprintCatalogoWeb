@@ -3,6 +3,7 @@ import { EncabezadoPanel, Insignia, Tarjeta } from "@/components/ui/Panel";
 import { db } from "@/lib/db";
 import { requireUsuario } from "@/lib/guards";
 import { eliminarMarca } from "@/features/marcas/actions";
+import { FormEliminar } from "@/components/ui/FormEliminar";
 import { FormularioMarca } from "@/features/marcas/components/FormularioMarca";
 
 export const metadata: Metadata = { title: "Marcas" };
@@ -41,15 +42,18 @@ export default async function PaginaMarcas() {
                 {marca._count.productos === 1 ? "producto" : "productos"}
               </Insignia>
               {marca._count.productos === 0 && (
-                <form action={eliminarMarca}>
-                  <input type="hidden" name="id" value={marca.id} />
+                <FormEliminar
+                  accion={eliminarMarca}
+                  id={marca.id}
+                  mensaje={`¿Eliminar la marca "${marca.nombre}"?`}
+                >
                   <button
                     type="submit"
                     className="cursor-pointer text-[0.8rem] text-tenue hover:text-rojo"
                   >
                     Eliminar
                   </button>
-                </form>
+                </FormEliminar>
               )}
             </div>
 

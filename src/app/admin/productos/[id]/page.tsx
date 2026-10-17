@@ -9,6 +9,7 @@ import { inventario } from "@/lib/inventario";
 import { UMBRAL_BAJO_POR_DEFECTO } from "@/lib/stock";
 import { obtenerConfiguracion } from "@/features/configuracion/queries";
 import { eliminarProducto } from "@/features/productos/actions";
+import { FormEliminar } from "@/components/ui/FormEliminar";
 import {
   listarCategoriasPlanas,
   listarMarcas,
@@ -66,12 +67,15 @@ export default async function PaginaEditarProducto({
             <BotonLink href="/admin/productos" variante="secundario">
               Volver
             </BotonLink>
-            <form action={eliminarProducto}>
-              <input type="hidden" name="id" value={producto.id} />
+            <FormEliminar
+              accion={eliminarProducto}
+              id={producto.id}
+              mensaje="¿Eliminar este producto? Esta acción no se puede deshacer."
+            >
               <Boton type="submit" variante="peligro">
                 Eliminar
               </Boton>
-            </form>
+            </FormEliminar>
           </>
         }
       />
