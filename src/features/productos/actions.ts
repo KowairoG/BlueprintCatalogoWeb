@@ -122,6 +122,9 @@ export async function crearProducto(
   formData: FormData
 ): Promise<EstadoAccion> {
   let destino: string | null = null;
+  // Se arma ANTES de cualquier posible fallo para poder devolverlo y repoblar
+  // el formulario si algo sale mal (validación, duplicado, imagen, base…).
+  const enviados = leerFormularioProducto(formData);
 
   const resultado = await ejecutarAccion(async () => {
     await requireUsuarioEnAccion();
@@ -182,7 +185,9 @@ export async function crearProducto(
   // El redirect va afuera del try/catch: adentro lo atraparía el manejador de
   // errores, porque Next lo señaliza lanzando una excepción.
   if (destino) redirect(destino);
-  return resultado;
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }
 
 // --- Editar ----------------------------------------------------------------
@@ -191,7 +196,9 @@ export async function actualizarProducto(
   _estadoPrevio: EstadoAccion,
   formData: FormData
 ): Promise<EstadoAccion> {
-  return ejecutarAccion(async () => {
+  const enviados = leerFormularioProducto(formData);
+
+  const resultado = await ejecutarAccion(async () => {
     await requireUsuarioEnAccion();
 
     const id = String(formData.get("id") ?? "");
@@ -264,6 +271,10 @@ export async function actualizarProducto(
 
     return exito("Cambios guardados.");
   });
+
+  return resultado.ok
+    ? resultado
+    : { ...resultado, valores: enviados, nonce: crypto.randomUUID() };
 }
 
 // --- Publicar / despublicar ------------------------------------------------

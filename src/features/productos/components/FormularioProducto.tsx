@@ -94,6 +94,10 @@ export function FormularioProducto({
     ESTADO_INICIAL
   );
 
+  // Si la acción falló, `estado.valores` trae lo que el usuario había enviado;
+  // se usa para repoblar el formulario en lugar de los valores iniciales.
+  const v = (estado.valores as ValoresProducto | undefined) ?? valores;
+
   const [visibilidad, setVisibilidad] = useState(valores.mostrarPrecio);
 
   const precioVisible =
@@ -118,7 +122,17 @@ export function FormularioProducto({
         </form>
       ))}
 
-      <form id={ID_FORMULARIO} action={accion} className="flex flex-col gap-5">
+      {/*
+        `key` con el nonce del resultado: ante un fallo, React remonta el form y
+        los inputs toman de nuevo su `defaultValue` (ya repoblado con `v`), en
+        vez de quedar vacíos por el reset automático de React 19.
+      */}
+      <form
+        key={estado.nonce ?? "inicial"}
+        id={ID_FORMULARIO}
+        action={accion}
+        className="flex flex-col gap-5"
+      >
         {valores.id && <input type="hidden" name="id" value={valores.id} />}
 
         <MensajeAccion estado={estado} />
@@ -128,7 +142,7 @@ export function FormularioProducto({
             <CampoTexto
               etiqueta="Nombre"
               name="nombre"
-              defaultValue={valores.nombre}
+              defaultValue={v.nombre}
               placeholder="Nombre del producto"
               required
               errores={estado.errores?.nombre}
@@ -138,7 +152,7 @@ export function FormularioProducto({
             <CampoArea
               etiqueta="Descripción"
               name="descripcion"
-              defaultValue={valores.descripcion}
+              defaultValue={v.descripcion}
               rows={3}
               required
               placeholder="Una o dos frases: lo que alguien necesita saber para decidir."
@@ -149,7 +163,7 @@ export function FormularioProducto({
               <CampoSelect
                 etiqueta="Categoría"
                 name="categoriaId"
-                defaultValue={valores.categoriaId}
+                defaultValue={v.categoriaId}
                 required
                 errores={estado.errores?.categoriaId}
               >
@@ -166,7 +180,7 @@ export function FormularioProducto({
               <CampoSelect
                 etiqueta="Marca"
                 name="marcaId"
-                defaultValue={valores.marcaId}
+                defaultValue={v.marcaId}
                 errores={estado.errores?.marcaId}
               >
                 <option value="">Sin marca</option>
@@ -182,7 +196,7 @@ export function FormularioProducto({
               <CampoTexto
                 etiqueta="Código / SKU"
                 name="sku"
-                defaultValue={valores.sku}
+                defaultValue={v.sku}
                 placeholder="ABC-001"
                 errores={estado.errores?.sku}
                 ayuda="Opcional, pero ayuda muchísimo por WhatsApp."
@@ -190,7 +204,7 @@ export function FormularioProducto({
               <CampoTexto
                 etiqueta="Emoji"
                 name="emoji"
-                defaultValue={valores.emoji}
+                defaultValue={v.emoji}
                 placeholder="📦"
                 maxLength={8}
                 errores={estado.errores?.emoji}
@@ -199,7 +213,7 @@ export function FormularioProducto({
               <CampoSelect
                 etiqueta="Etiqueta"
                 name="etiqueta"
-                defaultValue={valores.etiqueta}
+                defaultValue={v.etiqueta}
                 errores={estado.errores?.etiqueta}
               >
                 <option value="">Sin etiqueta</option>
@@ -223,7 +237,7 @@ export function FormularioProducto({
                 etiqueta={`Precio (${MONEDA.codigo})`}
                 name="precio"
                 inputMode="numeric"
-                defaultValue={valores.precio}
+                defaultValue={v.precio}
                 placeholder="10000"
                 required
                 errores={estado.errores?.precio}
@@ -232,7 +246,7 @@ export function FormularioProducto({
                 etiqueta="Precio anterior"
                 name="precioAnterior"
                 inputMode="numeric"
-                defaultValue={valores.precioAnterior}
+                defaultValue={v.precioAnterior}
                 placeholder="12000"
                 errores={estado.errores?.precioAnterior}
                 ayuda="Solo si está en oferta. Se muestra tachado."
@@ -340,19 +354,19 @@ export function FormularioProducto({
             <CampoCasilla
               etiqueta="Publicado"
               name="publicado"
-              defaultChecked={valores.publicado}
+              defaultChecked={v.publicado}
               ayuda="Si lo apagás, desaparece del catálogo público pero se mantiene acá."
             />
             <CampoCasilla
               etiqueta="Destacado"
               name="destacado"
-              defaultChecked={valores.destacado}
+              defaultChecked={v.destacado}
               ayuda="Aparece de primero cuando el orden es por relevancia."
             />
             <CampoTexto
               etiqueta="Código en sistema externo"
               name="codigoExterno"
-              defaultValue={valores.codigoExterno}
+              defaultValue={v.codigoExterno}
               errores={estado.errores?.codigoExterno}
               ayuda="Opcional. Es el código de este producto en el sistema de facturación, para cuando se conecte la sincronización de existencias."
             />
@@ -369,7 +383,7 @@ export function FormularioProducto({
           </Boton>
           <span className="text-[0.8rem] text-tenue">
             {precioVisible
-              ? `Se publica a ${monto(Number(valores.precio) || 0)}`
+              ? `Se publica a ${monto(Number(v.precio) || 0)}`
               : "Precio oculto en el sitio"}
           </span>
         </div>

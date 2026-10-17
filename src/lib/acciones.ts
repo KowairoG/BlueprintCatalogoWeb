@@ -17,6 +17,19 @@ export type EstadoAccion = {
   mensaje?: string;
   /** Errores por campo, tal como los devuelve Zod. */
   errores?: Record<string, string[]>;
+  /**
+   * Valores que el usuario había enviado, para repoblar el formulario cuando la
+   * acción falla. React 19 resetea el `<form>` después de cada acción, así que
+   * sin esto se perdería todo lo digitado al primer error.
+   */
+  valores?: Record<string, unknown>;
+  /**
+   * Identificador único de este resultado. El formulario lo usa como `key` para
+   * remontarse en cada fallo y así tomar de nuevo su `defaultValue` (ya
+   * repoblado con `valores`); React no re-sincroniza `defaultValue` en un
+   * re-render normal, solo al montar.
+   */
+  nonce?: string;
 };
 
 export const ESTADO_INICIAL: EstadoAccion = { ok: false };
